@@ -1,0 +1,50 @@
+// para iniciar la primera instancia de MongoDB (Nodo Primario): En la terminal, se ejecuta el siguiente comando:
+mongod --replSet "torneoReplicaSet" --port 27017 --dbpath /data/db1 --bind_ip 127.0.0.1 --fork --logpath /var/log/mongodb/mongod1.log
+
+// para iniciar la segunda instancia de MongoDB (Nodo Secundario): En otro terminal, debemos ejecutar:
+mongod --replSet "torneoReplicaSet" --port 27018 --dbpath /data/db2 --bind_ip 127.0.0.1 --fork --logpath /var/log/mongodb/mongod2.log
+
+// Inicia la tercera instancia de MongoDB (Nodo Secundario): En otro terminal, ejecuta:
+mongod --replSet "torneoReplicaSet" --port 27019 --dbpath /data/db3 --bind_ip 127.0.0.1 --fork --logpath /var/log/mongodb/mongod3.log
+
+// Una vez tengamos todas las instancias de MongoDB corriendo, entonces nos debemos conectar a uno de los nodos e iniciar la configuración del Replica Set.
+//Nos conectamos al nodo primario
+mongo --port 27017
+
+Ejecutamos en la shell de MongoDB, el siguiente comando para configurar el Replica Set con los tres nodos:
+rs.initiate({
+  _id: "torneoReplicaSet",
+  members: [
+    { _id: 0, host: "localhost:27017" }, // Nodo Primario
+    { _id: 1, host: "localhost:27018" }, // Nodo Secundario
+    { _id: 2, host: "localhost:27019" }  // Nodo Secundario
+  ]
+});
+
+//Verificamos que el Replica Set esté configurado correctamente ejecutando el comando:
+rs.status();
+
+// Una vez configurado el Replica Set, nos podemos conectar a cualquier nodo del Replica Set para leer y escribir, y MongoDB se encargará de dirigir las operaciones a los nodos
+correctos.
+// Para establecer la conexión en nuestra aplicación, utilizamos la siguiente cadena de conexión que incluye todos los nodos:
+mongodb://localhost:27017,localhost:27018,localhost:27019/?replicaSet=torneoReplicaSet
+
+//Con el Replica Set configurado, la base de datos del evento deportivo debe ser replicada automáticamente entre los nodos. En el que se incluye todas las colecciones que forman el 
+modelo de datos, como deportistas, equipos, encuentrosDeportivos, y demás.
+
+//Supongamos que hacemos uso de MongoDB en Javascript, entonces ejecutamos el siguiente código para crear la base de datos y colecciones:
+
+use torneoDeportivo;
+
+db.createCollection("deportistas");
+db.createCollection("equipos");
+db.createCollection("encuentrosDeportivos");
+db.createCollection("tablaDePosiciones");
+db.createCollection("arbitros");
+
+//Lectura (Operaciones en nodos secundarios): Configuramos la aplicación para hacer lecturas desde los nodos secundarios, lo cual mejora el rendimiento, ya que las lecturas
+no afectarán al nodo primario. Para hacerlo, puedes configurar el modo de lectura en tu cliente MongoDB con la opción readPreference:
+
+db.getMongo().setReadPref('secondaryPreferred');
+
+De esta forma podemos 
